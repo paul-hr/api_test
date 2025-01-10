@@ -1,13 +1,18 @@
 const express = require("express");
 const { Pool } = require("pg");
 const bodyParser = require("body-parser");
+const multer = require("multer");
 
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Middleware
+// Middleware para manejar JSON y URL-encoded
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Middleware para manejar multipart/form-data
+const upload = multer();
+app.use(upload.any());
 
 // Conexión PostgreSQL
 const pool = new Pool({
@@ -32,7 +37,7 @@ const extractJotFormData = (body) => {
     if (body.nombre && body.email && body.mensaje) {
         formData = body;
     }
-    // Si los datos vienen de JotForm
+    // Si los datos vienen de JotForm en diferentes estructuras
     else if (body.rawRequest) {
         formData = body.rawRequest;
     }
@@ -41,6 +46,13 @@ const extractJotFormData = (body) => {
     }
     else if (body.submission) {
         formData = body.submission;
+    }
+    // Si los datos vienen como multipart/form-data
+    else if (Array.isArray(body)) {
+        formData = {};
+        body.forEach((field) => {
+            formData[field.fieldname] = field.value;
+        });
     }
     // Si los datos vienen en la raíz del objeto
     else {
