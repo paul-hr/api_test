@@ -5,11 +5,11 @@ const bodyParser = require("body-parser");
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Middleware para parsear JSON
+// Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Conexión a la base de datos PostgreSQL
+// Conexión PostgreSQL
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -18,46 +18,75 @@ const pool = new Pool({
 // Endpoint principal
 app.get("/", (req, res) => {
     return res.status(200).send({
-        message: "Servidor funcionando correctamente.",
-        timestamp: new Date().toISOString()
+        message: "Servidor funcionando correctamente."
     });
 });
 
-// Endpoint del webhook para JotForm
+// Función para extraer datos de JotForm
+const extractJotFormData = (body) => {
+    console.log('Datos recibidos:', body);
+
+    let formData = {};
+
+    // Si los datos vienen directamente (prueba con Insomnia)
+    if (body.nombre && body.email && body.mensaje) {
+        formData = body;
+    }
+    // Si los datos vienen de JotForm
+    else if (body.rawRequest) {
+        formData = body.rawRequest;
+    }
+    else if (body.formData) {
+        formData = body.formData;
+    }
+    else if (body.submission) {
+        formData = body.submission;
+    }
+    // Si los datos vienen en la raíz del objeto
+    else {
+        formData = body;
+    }
+
+    return formData;
+};
+
+// Endpoint webhook
 app.post("/webhook", async (req, res) => {
-    // Log completo de la solicitud
-    console.log('Headers:', req.headers);
-    console.log('Body completo:', JSON.stringify(req.body, null, 2));
+    console.log('Headers recibidos:', req.headers);
+    console.log('Body recibido:', req.body);
 
     try {
-        // Extraer datos usando los nombres de campos exactos
-        const { nombre, email, mensaje } = req.body;
-        const fecha = new Date().toISOString();
+        const formData = extractJotFormData(req.body);
+        console.log('Datos extraídos:', formData);
 
-        console.log('Datos extraídos:', { nombre, email, mensaje, fecha });
+        const { nombre, email, mensaje, fecha } = formData;
 
-        // Verificar si los datos están presentes
-        if (!nombre || !email || !mensaje) {
-            console.log('Datos faltantes en la solicitud');
+        // Verificación de datos
+        if (!nombre || !email || !mensaje || !fecha) {
+            console.log('Datos incompletos:', { nombre, email, mensaje, fecha });
             return res.status(400).json({
                 error: 'Datos incompletos',
-                receivedData: { nombre, email, mensaje },
-                originalBody: req.body
+                recibido: formData,
+                camposFaltantes: {
+                    nombre: !nombre,
+                    email: !email,
+                    mensaje: !mensaje,
+                    fecha: !fecha
+                }
             });
         }
 
-        // Insertar en la base de datos
+        // Insertar en base de datos
         const result = await pool.query(
             "INSERT INTO formulario (nombre, email, mensaje, fecha) VALUES ($1, $2, $3, $4) RETURNING *",
             [nombre, email, mensaje, fecha]
         );
 
-        console.log('Datos insertados:', result.rows[0]);
+        console.log('Registro insertado:', result.rows[0]);
 
-        // Respuesta exitosa
         return res.status(200).json({
             message: "Datos guardados con éxito",
-            savedData: {
+            datos: {
                 nombre,
                 email,
                 mensaje,
@@ -66,18 +95,17 @@ app.post("/webhook", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error en el procesamiento:", error);
+        console.error("Error:", error);
         return res.status(500).json({
-            error: "Error en el servidor",
-            details: error.message,
-            stack: error.stack
+            error: "Error del servidor",
+            detalles: error.message
         });
     }
 });
 
-// Inicia el servidor
+// Iniciar servidor
 const server = app.listen(port, () => {
-    console.log(`Servidor escuchando en el puerto ${port}`);
+    console.log(`Servidor escuchando en puerto ${port}`);
 });
 
 module.exports = app;
