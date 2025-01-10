@@ -29,23 +29,18 @@ app.get("/", (req, res) => {
 
 // Función para extraer datos de JotForm
 const extractJotFormData = (body) => {
-    console.log('Datos recibidos:', body);
+    console.log("Datos recibidos:", body);
 
     let formData = {};
 
-    // Si los datos vienen directamente (prueba con Insomnia)
-    if (body.nombre && body.email && body.mensaje) {
-        formData = body;
-    }
-    // Si los datos vienen de JotForm en diferentes estructuras
-    else if (body.rawRequest) {
-        formData = body.rawRequest;
-    }
-    else if (body.formData) {
-        formData = body.formData;
-    }
-    else if (body.submission) {
-        formData = body.submission;
+    // Manejo específico para JotForm
+    if (body.q8_nombre && body.q4_email && body.q5_mensaje && body.q7_fecha) {
+        formData = {
+            nombre: body.q8_nombre,
+            email: body.q4_email,
+            mensaje: body.q5_mensaje,
+            fecha: `${body.q7_fecha.year}-${body.q7_fecha.month}-${body.q7_fecha.day}`
+        };
     }
     // Si los datos vienen como multipart/form-data
     else if (Array.isArray(body)) {
@@ -54,7 +49,7 @@ const extractJotFormData = (body) => {
             formData[field.fieldname] = field.value;
         });
     }
-    // Si los datos vienen en la raíz del objeto
+    // Datos JSON estándar o en la raíz del objeto
     else {
         formData = body;
     }
@@ -64,20 +59,20 @@ const extractJotFormData = (body) => {
 
 // Endpoint webhook
 app.post("/webhook", async (req, res) => {
-    console.log('Headers recibidos:', req.headers);
-    console.log('Body recibido:', req.body);
+    console.log("Headers recibidos:", req.headers);
+    console.log("Body recibido:", req.body);
 
     try {
         const formData = extractJotFormData(req.body);
-        console.log('Datos extraídos:', formData);
+        console.log("Datos extraídos:", formData);
 
         const { nombre, email, mensaje, fecha } = formData;
 
         // Verificación de datos
         if (!nombre || !email || !mensaje || !fecha) {
-            console.log('Datos incompletos:', { nombre, email, mensaje, fecha });
+            console.log("Datos incompletos:", { nombre, email, mensaje, fecha });
             return res.status(400).json({
-                error: 'Datos incompletos',
+                error: "Datos incompletos",
                 recibido: formData,
                 camposFaltantes: {
                     nombre: !nombre,
@@ -94,7 +89,7 @@ app.post("/webhook", async (req, res) => {
             [nombre, email, mensaje, fecha]
         );
 
-        console.log('Registro insertado:', result.rows[0]);
+        console.log("Registro insertado:", result.rows[0]);
 
         return res.status(200).json({
             message: "Datos guardados con éxito",
@@ -105,7 +100,6 @@ app.post("/webhook", async (req, res) => {
                 fecha
             }
         });
-
     } catch (error) {
         console.error("Error:", error);
         return res.status(500).json({
