@@ -21,12 +21,15 @@ app.get("/", (req, res) => {
     });
 });
 
-// Endpoint del webhook para JotForm
+// Endpoint del webhook para JotForm (DEBE SER POST, y usando query parameters)
 app.post("/webhook", async (req, res) => {
-    const { nombre, email, mensaje, fecha } = req.query; // Ajusta los nombres según los campos del formulario de JotForm
+    // Accediendo a los parámetros desde la URL (query string)
+    const { nombre, email, mensaje, fecha } = req.query; // Cambié req.body por req.query
+
+    console.log("Datos recibidos:", req.query); // Verifica que lleguen correctamente
 
     try {
-        // Inserta datos en la tabla `formulario`
+        // Inserta los datos en la tabla formulario
         await pool.query(
             "INSERT INTO formulario (nombre, email, mensaje, fecha) VALUES ($1, $2, $3, $4)",
             [nombre, email, mensaje, fecha]
