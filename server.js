@@ -33,25 +33,27 @@ const extractJotFormData = (body) => {
 
     let formData = {};
 
-    // Manejo específico para JotForm
-    if (body.q8_nombre && body.q4_email && body.q5_mensaje && body.q7_fecha) {
-        formData = {
-            nombre: body.q8_nombre,
-            email: body.q4_email,
-            mensaje: body.q5_mensaje,
-            fecha: `${body.q7_fecha.year}-${body.q7_fecha.month}-${body.q7_fecha.day}`
-        };
+    // Si los datos vienen en rawRequest como string JSON
+    if (body.rawRequest) {
+        try {
+            const rawData = JSON.parse(body.rawRequest);
+            if (rawData.q8_nombre && rawData.q4_email && rawData.q5_mensaje && rawData.q7_fecha) {
+                formData = {
+                    nombre: rawData.q8_nombre,
+                    email: rawData.q4_email,
+                    mensaje: rawData.q5_mensaje,
+                    fecha: `${rawData.q7_fecha.year}-${rawData.q7_fecha.month}-${rawData.q7_fecha.day}`
+                };
+            }
+        } catch (error) {
+            console.error("Error al parsear rawRequest:", error.message);
+        }
     }
-    // Si los datos vienen como multipart/form-data
-    else if (Array.isArray(body)) {
+
+    // Si no se encontró información en rawRequest
+    if (!formData.nombre || !formData.email || !formData.mensaje || !formData.fecha) {
+        console.warn("No se encontraron datos completos en rawRequest.");
         formData = {};
-        body.forEach((field) => {
-            formData[field.fieldname] = field.value;
-        });
-    }
-    // Datos JSON estándar o en la raíz del objeto
-    else {
-        formData = body;
     }
 
     return formData;
