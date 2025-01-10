@@ -23,7 +23,7 @@ app.get("/", (req, res) => {
 
 // Endpoint del webhook para JotForm
 app.post("/webhook", async (req, res) => {
-    const { nombre, email, mensaje, fecha } = req.body; // Ajusta los nombres según los campos del formulario de JotForm
+    const { nombre, email, mensaje, fecha } = req.query; // Ajusta los nombres según los campos del formulario de JotForm
 
     try {
         // Inserta datos en la tabla `formulario`
